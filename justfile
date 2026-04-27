@@ -1,8 +1,11 @@
 set dotenv-load := true
 
+default:
+    @just --list
+
 pg_data := "backend/.pgdata"
 db_name := "bong"
-db_url  := "postgresql+asyncpg://localhost/" + db_name
+db_url  := "postgresql+asyncpg://localhost/" + db_name + "?host=/tmp"
 
 # ------------------------------------------------------------------ #
 # Postgres
@@ -13,11 +16,11 @@ db-start:
     if pg_ctl -D {{pg_data}} status > /dev/null 2>&1; then
         echo "postgres already running"
     else
-        pg_ctl -D {{pg_data}} -l {{pg_data}}/logfile start
+        pg_ctl -D {{pg_data}} -l {{pg_data}}/logfile start -w
     fi
 
 db-stop:
-    pg_ctl -D {{pg_data}} stop
+    pg_ctl -D {{pg_data}} -m fast stop
 
 db-init:
     #!/usr/bin/env bash
@@ -25,9 +28,10 @@ db-init:
         echo "{{pg_data}} already exists, skipping initdb"
     else
         initdb -D {{pg_data}}
+        echo "unix_socket_directories = '/tmp'" >> {{pg_data}}/postgresql.conf
     fi
     just db-start
-    createdb {{db_name}} || true
+    createdb -h /tmp {{db_name}} || true
 
 db-reset:
     #!/usr/bin/env bash
