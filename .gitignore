@@ -1,0 +1,25 @@
+# Nix
+result
+result-*
+.direnv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Postgres
+backend/.pgdata/
+
+# Node
+node_modules/
+.next/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Editor
+.DS_Store
