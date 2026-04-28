@@ -197,7 +197,7 @@ GET  /service/stream                   SSE endpoint — pushes new bong events t
 - `worker-1` is the ingress node — only node with a public IP, 80/443 open
 - `control` and `worker-2` have no public IPs
 - `vegeta` reaches control plane API at its private IP over the Hetzner network
-- `bong.philipamendolia.com` A record points at `worker-1` public IP
+- `catchbong.com` A record points at `worker-1` public IP
 
 | Machine | Public IP | Open Ports | Role |
 |---|---|---|---|
@@ -345,7 +345,7 @@ You must respond only with valid JSON in this exact format:
 - Terraform nodes in capsule-corp — `control`, `worker-1` (public IP), `worker-2`
 - cloud-init bootstraps k3s on each node, joins cluster
 - Nginx ingress controller via Helm, Traefik disabled
-- cert-manager + Let's Encrypt, `bong.philipamendolia.com` resolves with valid TLS
+- cert-manager + Let's Encrypt, `catchbong.com` resolves with valid TLS
 - Deploy placeholder images to validate infrastructure:
   - `nginx` as frontend placeholder — ingress routing works
   - `httpbin` as backend placeholder — `/service/*` routing works

@@ -10,10 +10,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - bong.philipamendolia.com
+        - catchbong.com
       secretName: bong-tls
   rules:
-    - host: bong.philipamendolia.com
+    - host: catchbong.com
       http:
         paths:
           - path: /service
