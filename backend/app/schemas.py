@@ -22,7 +22,7 @@ class UserRead(BaseModel):
 
 class BongCreate(BaseModel):
     submitter_id: uuid.UUID
-    subject_id: uuid.UUID
+    subject_ids: list[uuid.UUID]
     offense: str
 
 
@@ -31,9 +31,9 @@ class BongRead(BaseModel):
     submitter: UserRead
     subjects: list[UserRead]
     offense: str
-    tier: str
-    score: Decimal
-    llm_response: str
+    tier: str | None
+    score: Decimal | None
+    llm_response: str | None
     cosign_count: int
     created_at: datetime
 

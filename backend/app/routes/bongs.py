@@ -1,12 +1,12 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..db import get_db
+from ..db import get_db, SessionLocal
 from ..models import Bong, BongSubject, Cosign, User
 from ..schemas import BongCreate, BongRead
-from ..llm import judge
+from ..llm import judge_stream
 from .stream import broadcast
 
 router = APIRouter()
@@ -31,29 +31,55 @@ async def _bong_read(bong: Bong, db: AsyncSession) -> BongRead:
     )
 
 
+async def _run_judge(bong_id: uuid.UUID, offense: str) -> None:
+    async for event_type, value in judge_stream(offense):
+        if event_type == "verdict_chunk":
+            broadcast({"type": "verdict_chunk", "bong_id": str(bong_id), "chunk": value})
+        else:
+            async with SessionLocal() as db:
+                result = await db.execute(
+                    select(Bong)
+                    .options(
+                        selectinload(Bong.submitter),
+                        selectinload(Bong.subjects).selectinload(BongSubject.user),
+                    )
+                    .where(Bong.id == bong_id)
+                )
+                bong = result.scalar_one()
+                bong.score = value["score"]
+                bong.tier = value["tier"]
+                bong.llm_response = value["verdict"]
+                await db.commit()
+                await db.refresh(bong)
+                read = await _bong_read(bong, db)
+                broadcast({"type": "bong_complete", "bong": read.model_dump(mode="json")})
+
+
 @router.post("/bongs", response_model=BongRead, status_code=201)
-async def submit_bong(body: BongCreate, db: AsyncSession = Depends(get_db)):
+async def submit_bong(body: BongCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     submitter = await db.get(User, body.submitter_id)
     if not submitter:
         raise HTTPException(status_code=404, detail="submitter not found")
 
-    subject = await db.get(User, body.subject_id)
-    if not subject:
-        raise HTTPException(status_code=404, detail="subject not found")
+    if not body.subject_ids:
+        raise HTTPException(status_code=400, detail="at least one subject required")
 
-    verdict = await judge(body.offense)
+    for sid in body.subject_ids:
+        if not await db.get(User, sid):
+            raise HTTPException(status_code=404, detail=f"subject {sid} not found")
 
     bong = Bong(
         submitter_id=body.submitter_id,
         offense=body.offense,
-        tier=verdict["tier"],
-        score=verdict["score"],
-        llm_response=verdict["verdict"],
+        tier=None,
+        score=None,
+        llm_response=None,
     )
     db.add(bong)
     await db.flush()
 
-    db.add(BongSubject(bong_id=bong.id, user_id=body.subject_id))
+    for sid in body.subject_ids:
+        db.add(BongSubject(bong_id=bong.id, user_id=sid))
     await db.commit()
 
     await db.refresh(bong)
@@ -62,7 +88,9 @@ async def submit_bong(body: BongCreate, db: AsyncSession = Depends(get_db)):
         await db.refresh(s, ["user"])
 
     read = await _bong_read(bong, db)
-    broadcast(read.model_dump(mode="json"))
+    broadcast({"type": "bong_pending", "bong": read.model_dump(mode="json")})
+
+    background_tasks.add_task(_run_judge, bong.id, body.offense)
     return read
 
 

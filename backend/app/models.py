@@ -26,9 +26,9 @@ class Bong(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     submitter_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     offense: Mapped[str] = mapped_column(String, nullable=False)
-    tier: Mapped[str] = mapped_column(String, nullable=False)
-    score: Mapped[Decimal] = mapped_column(Numeric(4, 1), nullable=False)
-    llm_response: Mapped[str] = mapped_column(String, nullable=False)
+    tier: Mapped[str | None] = mapped_column(String, nullable=True)
+    score: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
+    llm_response: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
 
     submitter: Mapped["User"] = relationship(back_populates="submitted_bongs")
