@@ -71,6 +71,40 @@ dev-frontend:
 # k8s
 # ------------------------------------------------------------------ #
 
+cluster-bootstrap:
+    #!/usr/bin/env bash
+    set -e
+
+    if [ -z "$POSTGRES_PASSWORD" ]; then
+        echo "error: POSTGRES_PASSWORD env var is not set"
+        exit 1
+    fi
+
+    echo "==> adding helm repos"
+    helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+    helm repo add jetstack https://charts.jetstack.io
+    helm repo update
+
+    echo "==> installing nginx ingress controller"
+    helm install ingress-nginx ingress-nginx/ingress-nginx \
+        --set controller.nodeSelector."role"=ingress
+
+    echo "==> installing cert-manager"
+    helm install cert-manager jetstack/cert-manager \
+        --namespace cert-manager --create-namespace \
+        --set crds.enabled=true
+
+    echo "==> waiting for cert-manager"
+    kubectl wait --namespace cert-manager --for=condition=ready pod \
+        --selector=app.kubernetes.io/instance=cert-manager --timeout=120s
+
+    echo "==> creating postgres secret"
+    kubectl create secret generic postgres-secret \
+        --from-literal=password="$POSTGRES_PASSWORD"
+
+    echo "==> deploying"
+    just k8s-apply
+
 k8s-apply:
     kubectl apply -f k8s/
 
