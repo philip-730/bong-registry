@@ -66,3 +66,16 @@ dev-backend: db-start
 
 dev-frontend:
     cd frontend && npm run dev
+
+# ------------------------------------------------------------------ #
+# k8s
+# ------------------------------------------------------------------ #
+
+k8s-apply:
+    kubectl apply -f k8s/
+
+k8s-delete:
+    kubectl delete -f k8s/
+
+k8s-status:
+    kubectl get pods,svc,ingress,pvc
