@@ -92,7 +92,8 @@ cluster-bootstrap:
     echo "==> installing cert-manager"
     helm install cert-manager jetstack/cert-manager \
         --namespace cert-manager --create-namespace \
-        --set crds.enabled=true
+        --set crds.enabled=true \
+        --timeout 5m
 
     echo "==> waiting for cert-manager"
     kubectl wait --namespace cert-manager --for=condition=ready pod \
