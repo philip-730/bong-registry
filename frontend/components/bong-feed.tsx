@@ -50,7 +50,7 @@ export function BongFeed({ initial, userId, users }: { initial: Bong[]; userId?:
   }, [userId])
 
   useEffect(() => {
-    const streamUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? ""}/service/stream`
+    const streamUrl = "/service/stream"
     const es = new EventSource(streamUrl)
     es.onmessage = (e) => {
       try {

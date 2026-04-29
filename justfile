@@ -121,6 +121,9 @@ k8s-delete:
 k8s-status:
     kubectl get pods,svc,ingress,pvc
 
+k8s-rollout:
+    kubectl rollout restart deployment/backend deployment/frontend
+
 # Print the npmDepsHash needed in flake.nix for the frontend buildNpmPackage.
 # Paste the output into the npmDepsHash field in flake.nix.
 npm-deps-hash:
