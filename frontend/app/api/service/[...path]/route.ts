@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/auth"
 
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000"
 
 async function proxy(req: NextRequest, pathSegments: string[]) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ detail: "unauthorized" }, { status: 401 })
   const pathStr = pathSegments.join("/")
   const url = new URL(`${BACKEND}/service/${pathStr}`)
   req.nextUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value))
