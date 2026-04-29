@@ -20,6 +20,7 @@ export function BongFeed({ initial, userId, users }: { initial: Bong[]; userId?:
   const [filterUserId, setFilterUserId] = useState<string>(userId ?? users[0]?.id ?? "")
   const filterRef = useRef<{ filter: FilterType; filterUserId: string }>({ filter: "all", filterUserId: filterUserId })
   const skipInitialFetch = useRef(true)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     filterRef.current = { filter, filterUserId }
@@ -59,6 +60,9 @@ export function BongFeed({ initial, userId, users }: { initial: Bong[]; userId?:
         if (event.type === "bong_pending") {
           if (matchesFilter(event.bong, filter, filterUserId)) {
             setBongs((prev) => [event.bong, ...prev])
+            if (event.bong.submitter.id === userId) {
+              containerRef.current?.parentElement?.scrollTo({ top: 0, behavior: "smooth" })
+            }
           }
         } else if (event.type === "verdict_chunk") {
           setVerdictMap((prev) => ({
@@ -89,7 +93,7 @@ export function BongFeed({ initial, userId, users }: { initial: Bong[]; userId?:
   }
 
   return (
-    <div>
+    <div ref={containerRef}>
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         {(["all", "by", "on"] as FilterType[]).map((f) => (
           <button

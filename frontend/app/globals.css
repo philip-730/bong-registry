@@ -89,6 +89,15 @@
   --sidebar-ring: hsl(234 13.21% 31.18%);
 }
 
+@keyframes verdict-flash {
+  0%   { background-color: hsl(267 83.51% 80.98% / 0.12); }
+  100% { background-color: transparent; }
+}
+
+.animate-verdict-flash {
+  animation: verdict-flash 0.8s ease-out forwards;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

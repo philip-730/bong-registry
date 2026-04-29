@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -43,10 +43,21 @@ export function BongCard({ bong, users, userId, cosigned = false, onCosignChange
   const [isCosigned, setIsCosigned] = useState(cosigned)
   const [cosignCount, setCosignCount] = useState(bong.cosign_count)
   const [loading, setLoading] = useState(false)
+  const [flashing, setFlashing] = useState(false)
+  const wasStreaming = useRef(false)
 
   useEffect(() => {
     setIsCosigned(cosigned)
   }, [cosigned])
+
+  useEffect(() => {
+    if (wasStreaming.current && streamingVerdict === undefined) {
+      setFlashing(true)
+      const t = setTimeout(() => setFlashing(false), 800)
+      return () => clearTimeout(t)
+    }
+    wasStreaming.current = streamingVerdict !== undefined
+  }, [streamingVerdict])
 
   const isPending = bong.score === null
   const isStreaming = streamingVerdict !== undefined
@@ -124,7 +135,7 @@ export function BongCard({ bong, users, userId, cosigned = false, onCosignChange
       </div>
 
       {(isStreaming || verdictText) && (
-        <p className="text-xs text-muted-foreground flex gap-1.5 items-start px-1">
+        <p className={`text-xs text-muted-foreground flex gap-1.5 items-start px-1 rounded ${flashing ? "animate-verdict-flash" : ""}`}>
           <Sparkles className="w-3 h-3 shrink-0 mt-0.5" />
           <span>{verdictText}{isStreaming && <span className="animate-pulse">▌</span>}</span>
         </p>
