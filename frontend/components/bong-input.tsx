@@ -176,6 +176,15 @@ export const BongInput = forwardRef<BongInputHandle, BongInputProps>(
       if (e.inputType === "deleteContentBackward") {
         if (deletePillBeforeCursor()) e.preventDefault()
       }
+      if (e.inputType === "insertText" && e.data === " " && mention) {
+        const exact = users.find(
+          (u) => u.display_name.toLowerCase() === mention.query.toLowerCase()
+        )
+        if (exact) {
+          e.preventDefault()
+          insertPill(exact)
+        }
+      }
     }
 
     function handleKeyDown(e: React.KeyboardEvent) {
