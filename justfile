@@ -114,3 +114,36 @@ k8s-delete:
 
 k8s-status:
     kubectl get pods,svc,ingress,pvc
+
+# Print the npmDepsHash needed in flake.nix for the frontend buildNpmPackage.
+# Paste the output into the npmDepsHash field in flake.nix.
+npm-deps-hash:
+    nix run nixpkgs#prefetch-npm-deps -- frontend/package-lock.json
+
+# Create k8s secrets for backend and frontend.
+# Requires env vars: POSTGRES_PASSWORD, ANTHROPIC_API_KEY,
+#                    NEXTAUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+k8s-secrets:
+    #!/usr/bin/env bash
+    set -e
+
+    if [ -z "$POSTGRES_PASSWORD" ] || [ -z "$ANTHROPIC_API_KEY" ] || \
+       [ -z "$NEXTAUTH_SECRET" ] || [ -z "$GOOGLE_CLIENT_ID" ] || \
+       [ -z "$GOOGLE_CLIENT_SECRET" ]; then
+        echo "error: one or more required env vars are not set"
+        echo "  required: POSTGRES_PASSWORD, ANTHROPIC_API_KEY, NEXTAUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET"
+        exit 1
+    fi
+
+    kubectl create secret generic backend-secret \
+        --from-literal=database-url="postgresql+asyncpg://bong:${POSTGRES_PASSWORD}@postgres/bong" \
+        --from-literal=anthropic-api-key="$ANTHROPIC_API_KEY" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+    kubectl create secret generic frontend-secret \
+        --from-literal=nextauth-secret="$NEXTAUTH_SECRET" \
+        --from-literal=google-client-id="$GOOGLE_CLIENT_ID" \
+        --from-literal=google-client-secret="$GOOGLE_CLIENT_SECRET" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+    echo "==> secrets applied"

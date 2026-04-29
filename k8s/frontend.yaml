@@ -14,10 +14,30 @@ spec:
     spec:
       containers:
         - name: frontend
-          # Phase 2 placeholder — replace with real image in Phase 4
-          image: nginx:latest
+          image: ghcr.io/philip-730/bong-registry-frontend:latest
+          imagePullPolicy: Always
           ports:
-            - containerPort: 80
+            - containerPort: 3000
+          env:
+            - name: NEXTAUTH_URL
+              value: "https://catchbong.com"
+            - name: BACKEND_URL
+              value: "http://backend:8000"
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-secret
+                  key: nextauth-secret
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-secret
+                  key: google-client-id
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-secret
+                  key: google-client-secret
 ---
 apiVersion: v1
 kind: Service
@@ -28,4 +48,4 @@ spec:
     app: frontend
   ports:
     - port: 3000
-      targetPort: 80
+      targetPort: 3000

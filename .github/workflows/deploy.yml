@@ -1,0 +1,39 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v14
+
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
+
+      - name: Log in to ghcr.io
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            nix run nixpkgs#skopeo -- login ghcr.io \
+              --username "${{ github.actor }}" --password-stdin
+
+      - name: Build and push backend image
+        run: |
+          nix build .#backend-image
+          ./result | nix run nixpkgs#skopeo -- copy --insecure-policy \
+            docker-archive:/dev/stdin \
+            docker://ghcr.io/philip-730/bong-registry-backend:latest
+
+      - name: Build and push frontend image
+        run: |
+          nix build .#frontend-image
+          ./result | nix run nixpkgs#skopeo -- copy --insecure-policy \
+            docker-archive:/dev/stdin \
+            docker://ghcr.io/philip-730/bong-registry-frontend:latest
