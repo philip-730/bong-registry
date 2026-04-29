@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { BongCard } from "@/components/bong-card"
-import type { Bong } from "@/types/api"
+import type { Bong, User } from "@/types/api"
 
 const PERIODS = ["week", "month", "year"] as const
 type Period = (typeof PERIODS)[number]
 
-export function BongOfPeriod({ userId }: { userId?: string }) {
+export function BongOfPeriod({ userId, users }: { userId?: string, users: User[] }) {
   const [period, setPeriod] = useState<Period>("week")
   const [bong, setBong] = useState<Bong | null>(null)
   const [loading, setLoading] = useState(true)
@@ -68,6 +68,7 @@ export function BongOfPeriod({ userId }: { userId?: string }) {
             userId={userId}
             cosigned={cosigned}
             onCosignChange={(_, c) => setCosigned(c)}
+            users={users}
           />
         </div>
       )}

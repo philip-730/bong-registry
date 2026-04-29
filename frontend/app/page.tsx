@@ -40,13 +40,13 @@ export default async function Home() {
             <TabsTrigger value="bong-of">bong of the...</TabsTrigger>
           </TabsList>
           <TabsContent value="feed" className="overflow-y-auto mt-4 pr-2">
-            <BongFeed initial={bongs} userId={session.user.userId} />
+            <BongFeed initial={bongs} userId={session.user.userId} users={users} />
           </TabsContent>
           <TabsContent value="leaderboard" className="overflow-y-auto mt-4">
             <BongLeaderboard />
           </TabsContent>
           <TabsContent value="bong-of" className="overflow-y-auto mt-4">
-            <BongOfPeriod userId={session.user.userId} />
+            <BongOfPeriod userId={session.user.userId} users={users} />
           </TabsContent>
         </Tabs>
       </div>

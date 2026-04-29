@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { Bong } from "@/types/api"
+import type { Bong, User } from "@/types/api"
 
 const tierColors: Record<string, string> = {
   "not that bong": "bg-muted text-muted-foreground",
@@ -31,13 +31,14 @@ function timeAgo(dateStr: string) {
 
 interface BongCardProps {
   bong: Bong
+  users: User[]
   userId?: string
   cosigned?: boolean
   onCosignChange?: (bongId: string, cosigned: boolean) => void
   streamingVerdict?: string
 }
 
-export function BongCard({ bong, userId, cosigned = false, onCosignChange, streamingVerdict }: BongCardProps) {
+export function BongCard({ bong, users, userId, cosigned = false, onCosignChange, streamingVerdict }: BongCardProps) {
   const [isCosigned, setIsCosigned] = useState(cosigned)
   const [cosignCount, setCosignCount] = useState(bong.cosign_count)
   const [loading, setLoading] = useState(false)
@@ -50,6 +51,23 @@ export function BongCard({ bong, userId, cosigned = false, onCosignChange, strea
   const isStreaming = streamingVerdict !== undefined
   const verdictText = isStreaming ? streamingVerdict : bong.llm_response
   const subjects = bong.subjects.map((s) => s.display_name).join(", ")
+
+  const userMap = Object.fromEntries(users.map((u) => [u.id, u.display_name]))
+
+  function renderTokens() {
+    return bong.offense_tokens.map((token, i) => {
+      if (token.type === "text") {
+        return <React.Fragment key={i}>{token.value}</React.Fragment>
+      }
+      const name = userMap[token.user_id!] ?? "someone"
+      return (
+        <span key={i} className="text-primary font-medium">
+          @{name}
+        </span>
+      )
+    })
+  }
+
   const tierClass = bong.tier ? (tierColors[bong.tier.toLowerCase()] ?? "bg-muted text-muted-foreground") : ""
 
   async function handleCosign() {
@@ -81,11 +99,11 @@ export function BongCard({ bong, userId, cosigned = false, onCosignChange, strea
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1 min-w-0">
           <div className="text-xs text-muted-foreground">
-            <span className="font-medium text-blue">{bong.submitter.display_name}</span>
+            <span className="font-medium text-teal">{bong.submitter.display_name}</span>
             <span> caught a bong on </span>
-            <span className="font-medium text-teal">{subjects}</span>
+            <span className="font-medium text-primary">{subjects}</span>
           </div>
-          <p className="text-sm">{bong.offense}</p>
+          <p className="text-sm">{renderTokens()}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {isPending ? (

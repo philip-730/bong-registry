@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import String, Numeric, ForeignKey, UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -25,7 +25,7 @@ class Bong(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     submitter_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    offense: Mapped[str] = mapped_column(String, nullable=False)
+    offense_tokens: Mapped[list] = mapped_column(JSONB, nullable=False)
     tier: Mapped[str | None] = mapped_column(String, nullable=True)
     score: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
     llm_response: Mapped[str | None] = mapped_column(String, nullable=True)

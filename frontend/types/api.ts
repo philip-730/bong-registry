@@ -6,11 +6,17 @@ export interface User {
   created_at: string
 }
 
+export interface OffenseToken {
+  type: "text" | "mention"
+  value?: string
+  user_id?: string
+}
+
 export interface Bong {
   id: string
   submitter: User
   subjects: User[]
-  offense: string
+  offense_tokens: OffenseToken[]
   tier: string | null
   score: string | null
   llm_response: string | null

@@ -20,17 +20,22 @@ class UserRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class OffenseToken(BaseModel):
+    type: str  # "text" or "mention"
+    value: str | None = None
+    user_id: uuid.UUID | None = None
+
+
 class BongCreate(BaseModel):
     submitter_id: uuid.UUID
-    subject_ids: list[uuid.UUID]
-    offense: str
+    offense_tokens: list[OffenseToken]
 
 
 class BongRead(BaseModel):
     id: uuid.UUID
     submitter: UserRead
     subjects: list[UserRead]
-    offense: str
+    offense_tokens: list[dict]
     tier: str | None
     score: Decimal | None
     llm_response: str | None

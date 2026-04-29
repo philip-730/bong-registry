@@ -7,7 +7,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react"
-import type { User } from "@/types/api"
+import type { User, OffenseToken } from "@/types/api"
 
 export interface BongInputHandle {
   clear: () => void
@@ -15,7 +15,7 @@ export interface BongInputHandle {
 
 interface BongInputProps {
   users: User[]
-  onChange: (offense: string, subjects: User[]) => void
+  onChange: (tokens: OffenseToken[], subjects: User[]) => void
 }
 
 function getActiveMention(el: HTMLElement) {
@@ -35,19 +35,34 @@ function getActiveMention(el: HTMLElement) {
   }
 }
 
-function extractContent(el: HTMLElement): { offense: string; subjects: User[] } {
-  let offense = ""
+function extractContent(el: HTMLElement): { tokens: OffenseToken[]; subjects: User[]; charCount: number } {
+  const tokens: OffenseToken[] = []
   const subjects: User[] = []
+  let charCount = 0
   el.childNodes.forEach((node) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      offense += node.textContent ?? ""
+      const text = node.textContent ?? ""
+      if (text) {
+        tokens.push({ type: "text", value: text })
+        charCount += text.length
+      }
     } else if (node instanceof HTMLElement && node.dataset.userId) {
-      offense += node.textContent ?? ""
       const user = JSON.parse(node.dataset.user!) as User
+      tokens.push({ type: "mention", user_id: user.id })
+      charCount += (node.textContent ?? "").length
       if (!subjects.find((s) => s.id === user.id)) subjects.push(user)
     }
   })
-  return { offense: offense.trim(), subjects }
+  // trim leading/trailing whitespace from first/last text tokens
+  if (tokens.length > 0 && tokens[0].type === "text") {
+    tokens[0] = { ...tokens[0], value: tokens[0].value!.trimStart() }
+    if (!tokens[0].value) tokens.shift()
+  }
+  if (tokens.length > 0 && tokens[tokens.length - 1].type === "text") {
+    tokens[tokens.length - 1] = { ...tokens[tokens.length - 1], value: tokens[tokens.length - 1].value!.trimEnd() }
+    if (!tokens[tokens.length - 1].value) tokens.pop()
+  }
+  return { tokens, subjects, charCount }
 }
 
 export const BongInput = forwardRef<BongInputHandle, BongInputProps>(
@@ -63,7 +78,7 @@ export const BongInput = forwardRef<BongInputHandle, BongInputProps>(
           divRef.current.innerHTML = ""
         }
         setMention(null)
-        onChange("", [])
+        onChange([], [])
       },
     }))
 
@@ -103,23 +118,23 @@ export const BongInput = forwardRef<BongInputHandle, BongInputProps>(
       sel.addRange(r)
 
       setMention(null)
-      const { offense, subjects } = extractContent(divRef.current)
-      onChange(offense, subjects)
+      const { tokens, subjects } = extractContent(divRef.current)
+      onChange(tokens, subjects)
     }
 
     function handleInput() {
       if (!divRef.current) return
-      const { offense, subjects } = extractContent(divRef.current)
-      setCharCount(offense.length)
+      const { tokens, subjects, charCount } = extractContent(divRef.current)
+      setCharCount(charCount)
       const m = getActiveMention(divRef.current)
       setMention(m)
-      onChange(offense, subjects)
+      onChange(tokens, subjects)
     }
 
     function handleKeyPress(e: React.KeyboardEvent) {
       if (!divRef.current) return
-      const { offense } = extractContent(divRef.current)
-      if (offense.length >= MAX_CHARS) {
+      const { charCount } = extractContent(divRef.current)
+      if (charCount >= MAX_CHARS) {
         e.preventDefault()
       }
     }
@@ -127,9 +142,9 @@ export const BongInput = forwardRef<BongInputHandle, BongInputProps>(
     function handlePaste(e: React.ClipboardEvent) {
       e.preventDefault()
       if (!divRef.current) return
-      const { offense } = extractContent(divRef.current)
+      const { charCount } = extractContent(divRef.current)
       const pasted = e.clipboardData.getData("text/plain")
-      const remaining = MAX_CHARS - offense.length
+      const remaining = MAX_CHARS - charCount
       if (remaining <= 0) return
       const truncated = pasted.slice(0, remaining)
       document.execCommand("insertText", false, truncated)

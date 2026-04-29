@@ -4,21 +4,20 @@ import { useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { BongInput, type BongInputHandle } from "@/components/bong-input"
-import type { User } from "@/types/api"
+import type { User, OffenseToken } from "@/types/api"
 
 export function SubmitBar({ users }: { users: User[] }) {
   const { data: session } = useSession()
   const inputRef = useRef<BongInputHandle>(null)
-  const [offense, setOffense] = useState("")
+  const [tokens, setTokens] = useState<OffenseToken[]>([])
   const [subjects, setSubjects] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const canSubmit = subjects.length > 0 && tokens.length > 0 && !loading
 
-  const canSubmit = subjects.length > 0 && offense.length > 0 && offense.length <= 300 && !loading
-
-  function handleChange(newOffense: string, newSubjects: User[]) {
-    setOffense(newOffense)
+  function handleChange(newTokens: OffenseToken[], newSubjects: User[]) {
+    setTokens(newTokens)
     setSubjects(newSubjects)
   }
 
@@ -34,8 +33,7 @@ export function SubmitBar({ users }: { users: User[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           submitter_id: session.user.userId,
-          subject_ids: subjects.map((s) => s.id),
-          offense,
+          offense_tokens: tokens,
         }),
       })
 
@@ -44,7 +42,7 @@ export function SubmitBar({ users }: { users: User[] }) {
         setError(body.detail ?? "something went wrong")
       } else {
         inputRef.current?.clear()
-        setOffense("")
+        setTokens([])
         setSubjects([])
       }
     } catch {

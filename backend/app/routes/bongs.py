@@ -22,7 +22,7 @@ async def _bong_read(bong: Bong, db: AsyncSession) -> BongRead:
         id=bong.id,
         submitter=bong.submitter,
         subjects=subjects,
-        offense=bong.offense,
+        offense_tokens=bong.offense_tokens,
         tier=bong.tier,
         score=bong.score,
         llm_response=bong.llm_response,
@@ -61,16 +61,28 @@ async def submit_bong(body: BongCreate, background_tasks: BackgroundTasks, db: A
     if not submitter:
         raise HTTPException(status_code=404, detail="submitter not found")
 
-    if not body.subject_ids:
+    subject_ids = list({t.user_id for t in body.offense_tokens if t.type == "mention" and t.user_id})
+    if not subject_ids:
         raise HTTPException(status_code=400, detail="at least one subject required")
 
-    for sid in body.subject_ids:
-        if not await db.get(User, sid):
+    subjects: list[User] = []
+    for sid in subject_ids:
+        user = await db.get(User, sid)
+        if not user:
             raise HTTPException(status_code=404, detail=f"subject {sid} not found")
+        subjects.append(user)
+
+    user_map = {str(u.id): u.display_name for u in subjects}
+    offense_text = "".join(
+        t.value if t.type == "text" else f"@{user_map.get(str(t.user_id), 'someone')}"
+        for t in body.offense_tokens
+    )
+
+    tokens_json = [t.model_dump(mode="json", exclude_none=True) for t in body.offense_tokens]
 
     bong = Bong(
         submitter_id=body.submitter_id,
-        offense=body.offense,
+        offense_tokens=tokens_json,
         tier=None,
         score=None,
         llm_response=None,
@@ -78,7 +90,7 @@ async def submit_bong(body: BongCreate, background_tasks: BackgroundTasks, db: A
     db.add(bong)
     await db.flush()
 
-    for sid in body.subject_ids:
+    for sid in subject_ids:
         db.add(BongSubject(bong_id=bong.id, user_id=sid))
     await db.commit()
 
@@ -90,22 +102,31 @@ async def submit_bong(body: BongCreate, background_tasks: BackgroundTasks, db: A
     read = await _bong_read(bong, db)
     broadcast({"type": "bong_pending", "bong": read.model_dump(mode="json")})
 
-    background_tasks.add_task(_run_judge, bong.id, body.offense)
+    background_tasks.add_task(_run_judge, bong.id, offense_text)
     return read
 
 
 @router.get("/bongs", response_model=list[BongRead])
-async def list_bongs(limit: int = 50, offset: int = 0, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
+async def list_bongs(
+    limit: int = 50,
+    offset: int = 0,
+    submitter_id: uuid.UUID | None = None,
+    subject_id: uuid.UUID | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    query = (
         select(Bong)
         .options(
             selectinload(Bong.submitter),
             selectinload(Bong.subjects).selectinload(BongSubject.user),
         )
         .order_by(Bong.created_at.desc())
-        .limit(limit)
-        .offset(offset)
     )
+    if submitter_id:
+        query = query.where(Bong.submitter_id == submitter_id)
+    if subject_id:
+        query = query.join(BongSubject, Bong.id == BongSubject.bong_id).where(BongSubject.user_id == subject_id)
+    result = await db.execute(query.limit(limit).offset(offset))
     bongs = result.scalars().all()
     return [await _bong_read(b, db) for b in bongs]
 
