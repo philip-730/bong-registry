@@ -51,9 +51,9 @@ vernacular. Weak submissions just score low — the scale handles bad faith natu
 ## Core Features
 
 ### Submit a Bong
-- Select subject (existing user or add new name)
-- Describe the offense (free text)
-- Submit → LLM judges → verdict displayed immediately
+- Free-form text input with @mention autocomplete for tagging subjects (supports multiple)
+- 300 character limit
+- Submit → card appears in feed immediately → verdict streams in character by character → score and tier reveal when judging is complete
 
 ### Bong Feed
 - Live feed of recent bongs, newest first
@@ -62,9 +62,10 @@ vernacular. Weak submissions just score low — the scale handles bad faith natu
   who has the app open
 
 ### Co-sign (Bong Button)
-- Bong button (custom bong branded emoji / svg) on every bong entry
-- One co-sign per user per bong
-- Co-sign count displayed on the entry
+- +bong button on every bong entry — anyone can cosign including the subject
+- One co-sign per user per bong (togglable)
+- Button shows "+bong", "+bong {count}" when others have cosigned, "bong {count}" when you've cosigned
+- Disabled while bong is pending (judging in progress)
 
 ### Leaderboards
 - All time, this year, this month, this week
@@ -94,9 +95,9 @@ created_at      timestamptz default now()
 id              uuid primary key
 submitter_id    uuid references users(id)
 offense         text not null
-tier            text not null
-score           numeric(4,1) not null
-llm_response    text not null
+tier            text             -- null while judging in progress
+score           numeric(4,1)     -- null while judging in progress
+llm_response    text             -- null while judging in progress
 created_at      timestamptz default now()
 ```
 
@@ -144,18 +145,23 @@ GET  /service/stream                   SSE endpoint — pushes new bong events t
 ```
 
 ### LLM Flow (on POST /bongs)
-1. Receive subject, submitter, offense
-2. Call LLM with system prompt + offense text
-3. Parse structured JSON response: `{ score, tier, verdict_text }`
-4. Write to `bongs` table
-5. Publish event to SSE stream
-6. Return verdict to client
+1. Receive subject(s), submitter, offense
+2. Write bong to DB immediately with null score/tier/llm_response
+3. Broadcast `bong_pending` event to SSE — card appears in all clients instantly
+4. Run LLM judge as a FastAPI `BackgroundTask` (request returns immediately)
+5. Stream verdict text character by character via `verdict_chunk` SSE events
+6. When stream ends, parse score + tier from second line of response
+7. Update DB record with final score/tier/verdict
+8. Broadcast `bong_complete` event to SSE — all clients swap skeleton for real data
 
 ### SSE Stream
-- `GET /stream` opens a persistent connection
-- On new bong insert, server pushes event to all connected clients
-- Event payload: full bong object (id, subject, tier, score, verdict text)
+- `GET /service/stream` opens a persistent connection
+- Three typed event payloads:
+  - `bong_pending` — full bong object with null score/tier/verdict, triggers card appearance
+  - `verdict_chunk` — `{ bong_id, chunk }`, verdict text streaming character by character
+  - `bong_complete` — full bong object with final score/tier/verdict
 - Client reconnects automatically on disconnect
+- In dev, browser connects directly to backend (`NEXT_PUBLIC_BACKEND_URL`) to bypass Next.js proxy buffering. In production, nginx routes `/service/stream` with extended timeouts.
 
 ---
 
@@ -300,7 +306,7 @@ bong-registry/
 
 ---
 
-## LLM System Prompt (Draft)
+## LLM System Prompt
 
 ```
 You are the bong judge. Your job is to grade bong submissions.
@@ -322,13 +328,12 @@ Bong scale:
 9.0–9.9: oddd bong
 10.0: bong bong bong
 
-You must respond only with valid JSON in this exact format:
-{
-  "score": <decimal 1.0–10.0>,
-  "tier": <tier name from scale>,
-  "verdict": <one or two sentences max, in bong vernacular>
-}
+Output exactly two lines, no markdown, no code blocks:
+Line 1: Your verdict (one or two sentences in bong vernacular)
+Line 2: {"score": <decimal 1.0–10.0>, "tier": "<tier name from scale>"}
 ```
+
+The verdict (line 1) is streamed to all connected clients in real time. Score and tier (line 2) are parsed when the stream ends and broadcast as the final `bong_complete` event.
 
 ---
 

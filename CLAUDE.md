@@ -39,7 +39,7 @@ just k8s-status     # pod/svc/ingress/pvc status
 - `justfile` — all dev and infra commands
 - `backend/app/main.py` — FastAPI app, all routes under `/service` prefix
 - `backend/app/models.py` — User, Bong, BongSubject, Cosign
-- `backend/app/llm.py` — Anthropic judge, returns score/tier/verdict
+- `backend/app/llm.py` — Anthropic judge, streams verdict char by char then parses score/tier from line 2
 - `backend/app/routes/` — bongs, leaderboard, users, stream (SSE)
 - `backend/alembic/` — migrations (async, reads DATABASE_URL env var)
 - `frontend/auth.ts` — NextAuth config (Google provider, JWT + session callbacks)
@@ -56,15 +56,18 @@ just k8s-status     # pod/svc/ingress/pvc status
 
 ## Frontend env vars
 
-See `frontend/.env.local.example`. Required: `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BACKEND_URL`.
+See `frontend/.env.local.example`. Required: `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BACKEND_URL`, `NEXT_PUBLIC_BACKEND_URL`.
 
-**Never read `frontend/.env.local` — it contains real secrets.**
+**Never read `frontend/.env.local` or `.env` — they contain real secrets.**
 
 The Next.js dev server proxies `/service/*` → backend via rewrites in `next.config.ts`. In production, nginx ingress handles this routing.
 
 ## Architecture notes
 
-- SSE live feed: module-level `_listeners` list in `routes/stream.py`, `broadcast()` called after each bong submission
+- SSE live feed: module-level `_listeners` list in `routes/stream.py`, three typed events: `bong_pending`, `verdict_chunk`, `bong_complete`
+- Bong submission returns immediately; LLM judge runs as a `BackgroundTask`, streams verdict via SSE
+- Browser connects directly to backend for SSE (`NEXT_PUBLIC_BACKEND_URL`) to avoid Next.js proxy buffering; CORS middleware on FastAPI allows `localhost:3000`
+- Backend requires `ANTHROPIC_API_KEY` in root `.env` (loaded by justfile `set dotenv-load := true`)
 - Ingress routes: `/service/*` → FastAPI (port 8000), `/*` → Next.js (port 3000)
 - Postgres 18 in k8s: mount at `/var/lib/postgresql` (not `/data`)
 - k3s flannel must use private interface: `--flannel-iface enp7s0` on Hetzner
