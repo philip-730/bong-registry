@@ -31,7 +31,7 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col h-dvh">
-      <AppHeader displayName={session.user.displayName} />
+      <AppHeader />
       <div className="flex-1 overflow-hidden flex flex-col max-w-2xl w-full mx-auto px-4">
         <Tabs defaultValue="feed" className="flex-1 overflow-hidden pt-4">
           <TabsList variant="line" className="w-full justify-center">

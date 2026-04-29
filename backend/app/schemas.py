@@ -20,6 +20,10 @@ class UserRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UserUpdate(BaseModel):
+    display_name: str
+
+
 class OffenseToken(BaseModel):
     type: str  # "text" or "mention"
     value: str | None = None
