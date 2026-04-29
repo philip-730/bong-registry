@@ -69,6 +69,7 @@ export const BongInput = forwardRef<BongInputHandle, BongInputProps>(
   ({ users, onChange }, ref) => {
     const divRef = useRef<HTMLDivElement>(null)
     const [mention, setMention] = useState<ReturnType<typeof getActiveMention>>(null)
+    const mentionRef = useRef<ReturnType<typeof getActiveMention>>(null)
     const [charCount, setCharCount] = useState(0)
     const MAX_CHARS = 300
 
@@ -127,6 +128,7 @@ export const BongInput = forwardRef<BongInputHandle, BongInputProps>(
       const { tokens, subjects, charCount } = extractContent(divRef.current)
       setCharCount(charCount)
       const m = getActiveMention(divRef.current)
+      mentionRef.current = m
       setMention(m)
       onChange(tokens, subjects)
     }
@@ -176,9 +178,10 @@ export const BongInput = forwardRef<BongInputHandle, BongInputProps>(
       if (e.inputType === "deleteContentBackward") {
         if (deletePillBeforeCursor()) e.preventDefault()
       }
-      if (e.inputType === "insertText" && e.data === " " && mention) {
+      if (e.inputType === "insertText" && e.data === " " && mentionRef.current) {
+        const currentMention = mentionRef.current
         const exact = users.find(
-          (u) => u.display_name.toLowerCase() === mention.query.toLowerCase()
+          (u) => u.display_name.toLowerCase() === currentMention.query.toLowerCase()
         )
         if (exact) {
           e.preventDefault()
