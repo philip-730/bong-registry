@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -103,7 +104,9 @@ export function BongCard({ bong, users, userId, cosigned = false, onCosignChange
             <span> caught a bong on </span>
             <span className="font-medium text-primary">{subjects}</span>
           </div>
-          <p className="text-sm">{renderTokens()}</p>
+          <div className="p-px rounded-lg bg-gradient-to-r from-teal to-blue mt-0.5">
+            <p className="text-sm bg-background rounded-[calc(0.5rem-1px)] px-2 py-1">{renderTokens()}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {isPending ? (
@@ -121,9 +124,9 @@ export function BongCard({ bong, users, userId, cosigned = false, onCosignChange
       </div>
 
       {(isStreaming || verdictText) && (
-        <p className="text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2">
-          {verdictText}
-          {isStreaming && <span className="animate-pulse">▌</span>}
+        <p className="text-xs text-muted-foreground flex gap-1.5 items-start px-1">
+          <Sparkles className="w-3 h-3 shrink-0 mt-0.5" />
+          <span>{verdictText}{isStreaming && <span className="animate-pulse">▌</span>}</span>
         </p>
       )}
 
