@@ -30,7 +30,7 @@ export default async function Home() {
   const { bongs, users } = await getData()
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-dvh">
       <AppHeader displayName={session.user.displayName} />
       <div className="flex-1 overflow-hidden flex flex-col max-w-2xl w-full mx-auto px-4">
         <Tabs defaultValue="feed" className="flex-1 overflow-hidden pt-4">

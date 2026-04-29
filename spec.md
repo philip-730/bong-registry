@@ -53,13 +53,14 @@ vernacular. Weak submissions just score low — the scale handles bad faith natu
 ### Submit a Bong
 - Free-form text input with @mention autocomplete for tagging subjects (supports multiple)
 - 300 character limit
+- Offense stored as structured JSONB tokens — text segments and mention tokens (user_id only, display name resolved at render time)
 - Submit → card appears in feed immediately → verdict streams in character by character → score and tier reveal when judging is complete
 
 ### Bong Feed
 - Live feed of recent bongs, newest first
 - Shows: subject, offense description, tier, score, co-sign count
-- Real-time updates via SSE — new bongs appear without refresh for anyone
-  who has the app open
+- Real-time updates via SSE — new bongs appear without refresh for anyone who has the app open
+- Filterable by "caught by" (submitter) or "caught on" (subject) with a user selector
 
 ### Co-sign (Bong Button)
 - +bong button on every bong entry — anyone can cosign including the subject
@@ -94,7 +95,7 @@ created_at      timestamptz default now()
 ```
 id              uuid primary key
 submitter_id    uuid references users(id)
-offense         text not null
+offense_tokens  jsonb not null   -- [{type:"text",value:""},{type:"mention",user_id:"uuid"}]
 tier            text             -- null while judging in progress
 score           numeric(4,1)     -- null while judging in progress
 llm_response    text             -- null while judging in progress
@@ -132,7 +133,7 @@ GET  /service/users                    list all users
 POST /service/users                    create user
 
 POST /service/bongs                    submit a bong (triggers LLM judging)
-GET  /service/bongs                    paginated bong feed
+GET  /service/bongs                    paginated bong feed (?submitter_id=, ?subject_id=)
 GET  /service/bongs/{id}               single bong detail
 
 POST /service/bongs/{id}/cosign        co-sign a bong
@@ -145,7 +146,7 @@ GET  /service/stream                   SSE endpoint — pushes new bong events t
 ```
 
 ### LLM Flow (on POST /bongs)
-1. Receive subject(s), submitter, offense
+1. Receive submitter + `offense_tokens`; extract subject_ids from mention tokens; reconstruct offense text for LLM
 2. Write bong to DB immediately with null score/tier/llm_response
 3. Broadcast `bong_pending` event to SSE — card appears in all clients instantly
 4. Run LLM judge as a FastAPI `BackgroundTask` (request returns immediately)
@@ -362,12 +363,12 @@ The verdict (line 1) is streamed to all connected clients in real time. Score an
 - Running locally against local Postgres
 - Infrastructure is solved, iterate fast on features
 
-### Phase 4 — Containerize and Deploy
-- OCI images built via `flake.nix` with `dockerTools.streamLayeredImage`
-- Pushed to ghcr.io with `skopeo`
-- Replace placeholder images in k8s manifests with real images
-- `just deploy-backend`, `just deploy-frontend` recipes run from vegeta
-- Postgres official image replaced with Nix-built image
+### Phase 4 — Containerize and Deploy ✓
+- OCI images built via `flake.nix` with `dockerTools.streamLayeredImage` (no Docker)
+- GitHub Actions builds and pushes both images to ghcr.io on every push to main via `skopeo`
+- k8s manifests updated with real images; backend deployment has an init container that runs `alembic upgrade head` before the pod starts
+- Secrets managed as k8s `Secret` resources, applied from vegeta via `just k8s-secrets`
+- k8s deployments applied manually from vegeta (`just k8s-apply`)
 
 - **Auth** — Google OAuth via `next-auth`. Google Cloud project set to "testing" mode,
   friends added as test users manually — supports up to 100, no app verification needed,

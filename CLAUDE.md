@@ -38,7 +38,7 @@ just k8s-status     # pod/svc/ingress/pvc status
 - `flake.nix` — dev shells + uv2nix workspace
 - `justfile` — all dev and infra commands
 - `backend/app/main.py` — FastAPI app, all routes under `/service` prefix
-- `backend/app/models.py` — User, Bong, BongSubject, Cosign
+- `backend/app/models.py` — User, Bong (offense_tokens JSONB), BongSubject, Cosign
 - `backend/app/llm.py` — Anthropic judge, streams verdict char by char then parses score/tier from line 2
 - `backend/app/routes/` — bongs, leaderboard, users, stream (SSE)
 - `backend/alembic/` — migrations (async, reads DATABASE_URL env var)
@@ -72,3 +72,7 @@ The Next.js dev server proxies `/service/*` → backend via rewrites in `next.co
 - Postgres 18 in k8s: mount at `/var/lib/postgresql` (not `/data`)
 - k3s flannel must use private interface: `--flannel-iface enp7s0` on Hetzner
 - Catppuccin Mocha theme, dark mode only — all CSS vars in `:root`, no `.dark` block
+- `offense_tokens` JSONB: `[{type:"text",value:""},{type:"mention",user_id:"uuid"}]` — subject_ids derived from mention tokens at submit time, offense text reconstructed for LLM
+- OCI images built via `nix build .#backend-image` / `.#frontend-image`, pushed to ghcr.io via GitHub Actions on push to main
+- Backend k8s deployment has init container: `alembic upgrade head` — migrations run automatically on deploy
+- `h-dvh` (not `h-screen`) on the main page layout to handle mobile browser chrome
