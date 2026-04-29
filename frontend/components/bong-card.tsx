@@ -20,7 +20,7 @@ const tierColors: Record<string, string> = {
 }
 
 function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime()
+  const diff = Date.now() - new Date(dateStr + "Z").getTime()
   const m = Math.floor(diff / 60000)
   if (m < 1) return "just now"
   if (m < 60) return `${m}m ago`
@@ -80,10 +80,10 @@ export function BongCard({ bong, userId, cosigned = false, onCosignChange, strea
     <div className="flex flex-col gap-2 py-4 border-b border-border">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1 min-w-0">
-          <div className="text-sm">
-            <span className="text-muted-foreground">{bong.submitter.display_name}</span>
-            <span className="text-muted-foreground"> caught a bong on </span>
-            <span className="font-medium">{subjects}</span>
+          <div className="text-xs text-muted-foreground">
+            <span className="font-medium text-blue">{bong.submitter.display_name}</span>
+            <span> caught a bong on </span>
+            <span className="font-medium text-teal">{subjects}</span>
           </div>
           <p className="text-sm">{bong.offense}</p>
         </div>
