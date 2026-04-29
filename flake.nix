@@ -59,6 +59,9 @@
         backendVenv = pythonSet.mkVirtualEnv "bong-registry-backend-env"
           workspace.deps.default;
 
+        backendDevVenv = pythonSet.mkVirtualEnv "bong-registry-backend-dev-env"
+          workspace.deps.all;
+
         # ------------------------------------------------------------------ #
         # OCI images — Phase 4
         # ------------------------------------------------------------------ #
@@ -148,7 +151,7 @@
         ];
 
         backendPackages = [
-          backendVenv
+          backendDevVenv
           pkgs.python313
           pkgs.uv
           pkgs.just

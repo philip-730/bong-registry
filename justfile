@@ -47,6 +47,12 @@ db-reset:
 migrate:
     cd backend && DATABASE_URL={{db_url}} alembic upgrade head
 
+test-db-init:
+    createdb -h /tmp bong_test
+
+test:
+    cd backend && DATABASE_URL=postgresql+asyncpg://localhost/bong_test?host=/tmp alembic upgrade head && python -m pytest tests/ -v
+
 migration name:
     cd backend && DATABASE_URL={{db_url}} alembic revision --autogenerate -m "{{name}}"
 
