@@ -198,3 +198,28 @@ class TestCosign:
 
         res = await client.delete(f"/service/bongs/{bong['id']}/cosign?user_id={u2['id']}")
         assert res.status_code == 404
+
+    async def test_get_cosigners(self, client, mocker):
+        mocker.patch("app.routes.bongs._run_judge")
+        u1 = await make_user(client, google_id="g1", email="a@test.com", display_name="alpha")
+        u2 = await make_user(client, google_id="g2", email="b@test.com", display_name="beta")
+        u3 = await make_user(client, google_id="g3", email="c@test.com", display_name="gamma")
+        bong = (await submit_bong(client, u1["id"], u2["id"])).json()
+
+        await client.post(f"/service/bongs/{bong['id']}/cosign?user_id={u2['id']}")
+        await client.post(f"/service/bongs/{bong['id']}/cosign?user_id={u3['id']}")
+
+        res = await client.get(f"/service/bongs/{bong['id']}/cosigns")
+        assert res.status_code == 200
+        names = [u["display_name"] for u in res.json()]
+        assert names == ["beta", "gamma"]
+
+    async def test_get_cosigners_empty(self, client, mocker):
+        mocker.patch("app.routes.bongs._run_judge")
+        u1 = await make_user(client, google_id="g1", email="a@test.com", display_name="alpha")
+        u2 = await make_user(client, google_id="g2", email="b@test.com", display_name="beta")
+        bong = (await submit_bong(client, u1["id"], u2["id"])).json()
+
+        res = await client.get(f"/service/bongs/{bong['id']}/cosigns")
+        assert res.status_code == 200
+        assert res.json() == []

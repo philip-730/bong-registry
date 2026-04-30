@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db, SessionLocal
 from ..models import Bong, BongSubject, Cosign, User
-from ..schemas import BongCreate, BongRead
+from ..schemas import BongCreate, BongRead, UserRead
 from ..llm import judge_stream
 from .stream import broadcast
 
@@ -145,6 +145,18 @@ async def get_bong(bong_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     if not bong:
         raise HTTPException(status_code=404, detail="bong not found")
     return await _bong_read(bong, db)
+
+
+@router.get("/bongs/{bong_id}/cosigns", response_model=list[UserRead])
+async def get_cosigners(bong_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(User)
+        .join(Cosign, Cosign.user_id == User.id)
+        .where(Cosign.bong_id == bong_id)
+        .order_by(Cosign.created_at)
+    )
+    users = result.scalars().all()
+    return [UserRead.model_validate(u) for u in users]
 
 
 @router.post("/bongs/{bong_id}/cosign", status_code=201)

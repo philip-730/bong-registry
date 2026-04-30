@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
-import { Sparkles } from "lucide-react"
+import { Eye, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import type { Bong, User } from "@/types/api"
 
@@ -44,6 +45,7 @@ export function BongCard({ bong, users, userId, cosigned = false, onCosignChange
   const [cosignCount, setCosignCount] = useState(bong.cosign_count)
   const [loading, setLoading] = useState(false)
   const [flashing, setFlashing] = useState(false)
+  const [cosigners, setCosigners] = useState<{ display_name: string }[] | null>(null)
   const wasStreaming = useRef(false)
 
   useEffect(() => {
@@ -82,15 +84,23 @@ export function BongCard({ bong, users, userId, cosigned = false, onCosignChange
 
   const tierClass = bong.tier ? (tierColors[bong.tier.toLowerCase()] ?? "bg-muted text-muted-foreground") : ""
 
+  async function handleViewCosigners() {
+    if (cosigners) return
+    const res = await fetch(`/service/bongs/${bong.id}/cosigns`)
+    if (res.ok) setCosigners(await res.json())
+  }
+
   async function handleCosign() {
     if (!userId || loading) return
     setLoading(true)
     try {
+      const currentUser = users.find((u) => u.id === userId)
       if (isCosigned) {
         const res = await fetch(`/service/bongs/${bong.id}/cosign?user_id=${userId}`, { method: "DELETE" })
         if (res.ok) {
           setIsCosigned(false)
           setCosignCount((c) => c - 1)
+          setCosigners((prev) => prev ? prev.filter((u) => u.display_name !== currentUser?.display_name) : null)
           onCosignChange?.(bong.id, false)
         }
       } else {
@@ -98,6 +108,7 @@ export function BongCard({ bong, users, userId, cosigned = false, onCosignChange
         if (res.ok) {
           setIsCosigned(true)
           setCosignCount((c) => c + 1)
+          if (currentUser) setCosigners((prev) => [...(prev ?? []), { display_name: currentUser.display_name }])
           onCosignChange?.(bong.id, true)
         }
       }
@@ -143,15 +154,35 @@ export function BongCard({ bong, users, userId, cosigned = false, onCosignChange
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">{timeAgo(bong.created_at)}</span>
-        <Button
-          variant="outline"
-          size="xs"
-          onClick={handleCosign}
-          disabled={loading || isPending}
-          className={isCosigned ? "border-primary text-primary" : ""}
-        >
-          {isCosigned ? `bong ${cosignCount}` : cosignCount > 0 ? `+bong ${cosignCount}` : "+bong"}
-        </Button>
+        <div className="flex items-center gap-1.5">
+          {cosignCount > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button onClick={handleViewCosigners} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" side="top" align="end">
+                <div className="flex flex-col gap-0.5">
+                  {cosigners
+                    ? cosigners.map((u) => (
+                        <p key={u.display_name} className="text-xs text-muted-foreground">@{u.display_name}</p>
+                      ))
+                    : <p className="text-xs text-muted-foreground">loading...</p>}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={handleCosign}
+            disabled={loading || isPending}
+            className={isCosigned ? "border-primary text-primary" : ""}
+          >
+            {isCosigned ? `bong ${cosignCount}` : cosignCount > 0 ? `+bong ${cosignCount}` : "+bong"}
+          </Button>
+        </div>
       </div>
     </div>
   )
